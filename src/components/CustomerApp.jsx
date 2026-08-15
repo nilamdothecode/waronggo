@@ -1,15 +1,23 @@
-import { useMemo, useState } from "react";
-import { MENU, CATEGORIES } from "../data/menu.js";
+import { useMemo, useState, useEffect } from "react";
+import { CATEGORIES } from "../data/menu.js";
 import { useOrders, STATUS } from "../store.js";
+import { fetchMenu } from "../api.js";
 
-const rm = (n) => "RM " + n.toFixed(2);
+const rm = (n) => "RM " + parseFloat(n).toFixed(2);
 
 export default function CustomerApp() {
   const { orders, placeOrder } = useOrders();
-  const [cart, setCart] = useState({}); // id -> {…item, qty}
+  const [cart, setCart] = useState({});
+  const [menuData, setMenuData] = useState([]);
   const [table, setTable] = useState("");
   const [activeCat, setActiveCat] = useState(CATEGORIES[0]);
   const [lastOrder, setLastOrder] = useState(null);
+
+  useEffect(() => {
+    fetchMenu().then(data => {
+      if (data && data.length > 0) setMenuData(data);
+    });
+  }, []);
 
   const add = (item) =>
     setCart((c) => {
@@ -29,15 +37,14 @@ export default function CustomerApp() {
     });
 
   const lines = Object.values(cart);
-  const total = lines.reduce((s, i) => s + i.price * i.qty, 0);
+  const total = lines.reduce((s, i) => s + parseFloat(i.price) * i.qty, 0);
   const count = lines.reduce((s, i) => s + i.qty, 0);
 
   const visible = useMemo(
-    () => MENU.filter((m) => m.cat === activeCat),
-    [activeCat]
+    () => menuData.filter((m) => m.category === activeCat),
+    [activeCat, menuData]
   );
 
-  // Track the live status of the order this customer just placed.
   const tracked = lastOrder
     ? orders.find((o) => o.id === lastOrder.id) || lastOrder
     : null;
@@ -52,7 +59,6 @@ export default function CustomerApp() {
 
   return (
     <main className="customer">
-      {/* Live status banner for the order just placed */}
       {tracked && (
         <div className={`status-banner s-${statusKey(tracked.status)}`}>
           <div>
@@ -85,24 +91,18 @@ export default function CustomerApp() {
         <ul className="menu-list">
           {visible.map((m) => (
             <li key={m.id} className="menu-item">
-              <span className="mi-emoji" aria-hidden="true">
-                {m.emoji}
-              </span>
+              <span className="mi-emoji" aria-hidden="true">{m.emoji}</span>
               <div className="mi-info">
                 <div className="mi-name">{m.name}</div>
-                <div className="mi-desc">{m.desc}</div>
+                <div className="mi-desc">{m.description}</div>
                 <div className="mi-price">{rm(m.price)}</div>
               </div>
               <div className="mi-controls">
                 {cart[m.id]?.qty ? (
                   <div className="stepper">
-                    <button aria-label="Kurang" onClick={() => remove(m.id)}>
-                      −
-                    </button>
+                    <button aria-label="Kurang" onClick={() => remove(m.id)}>−</button>
                     <span>{cart[m.id].qty}</span>
-                    <button aria-label="Tambah" onClick={() => add(m)}>
-                      +
-                    </button>
+                    <button aria-label="Tambah" onClick={() => add(m)}>+</button>
                   </div>
                 ) : (
                   <button className="add-btn" onClick={() => add(m)}>
@@ -115,12 +115,11 @@ export default function CustomerApp() {
         </ul>
       </div>
 
-      {/* Cart / checkout */}
       <aside className="cart">
         <h3>Pesanan anda</h3>
         {lines.length === 0 ? (
           <p className="cart-empty">
-            Cart kosong lagi. Tap “Tambah” untuk pilih makanan.
+            Cart kosong lagi. Tap "Tambah" untuk pilih makanan.
           </p>
         ) : (
           <>
@@ -129,7 +128,7 @@ export default function CustomerApp() {
                 <li key={l.id}>
                   <span className="cl-qty">{l.qty}×</span>
                   <span className="cl-name">{l.name}</span>
-                  <span className="cl-price">{rm(l.price * l.qty)}</span>
+                  <span className="cl-price">{rm(parseFloat(l.price) * l.qty)}</span>
                 </li>
               ))}
             </ul>
