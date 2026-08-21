@@ -1,23 +1,20 @@
-import { useMemo, useState, useEffect } from "react";
-import { CATEGORIES } from "../data/menu.js";
+import { useMemo, useState } from "react";
+import { MENU, CATEGORIES } from "../data/menu.js";
 import { useOrders, STATUS } from "../store.js";
-import { fetchMenu } from "../api.js";
 
 const rm = (n) => "RM " + parseFloat(n).toFixed(2);
+
+// menu.js may use either { cat, desc } or { category, description }
+// depending on edits — read both so the menu always renders.
+const catOf = (m) => m.cat ?? m.category;
+const descOf = (m) => m.desc ?? m.description ?? "";
 
 export default function CustomerApp() {
   const { orders, placeOrder } = useOrders();
   const [cart, setCart] = useState({});
-  const [menuData, setMenuData] = useState([]);
   const [table, setTable] = useState("");
   const [activeCat, setActiveCat] = useState(CATEGORIES[0]);
   const [lastOrder, setLastOrder] = useState(null);
-
-  useEffect(() => {
-    fetchMenu().then(data => {
-      if (data && data.length > 0) setMenuData(data);
-    });
-  }, []);
 
   const add = (item) =>
     setCart((c) => {
@@ -41,8 +38,8 @@ export default function CustomerApp() {
   const count = lines.reduce((s, i) => s + i.qty, 0);
 
   const visible = useMemo(
-    () => menuData.filter((m) => m.category === activeCat),
-    [activeCat, menuData]
+    () => MENU.filter((m) => catOf(m) === activeCat),
+    [activeCat]
   );
 
   const tracked = lastOrder
@@ -58,7 +55,7 @@ export default function CustomerApp() {
   };
 
   return (
-    <main className="customer">
+    <>
       {tracked && (
         <div className={`status-banner s-${statusKey(tracked.status)}`}>
           <div>
@@ -71,89 +68,113 @@ export default function CustomerApp() {
         </div>
       )}
 
-      <div className="menu-area">
-        <h2 className="screen-title">Menu</h2>
+      <section className="hero">
+        <p className="hero-eyebrow">Dapur buka · 8 pagi – 10 malam</p>
+        <h1 className="hero-title">Panas-panas, terus ke meja kau.</h1>
+        <p className="hero-sub">
+          Order dari telefon, kami masak, kau relax. Nasi lemak sampai teh
+          tarik — semua fresh, dimasak bila kau order.
+        </p>
+        <a className="hero-cta" href="#menu">
+          Lihat menu
+        </a>
+      </section>
 
-        <div className="cats" role="tablist">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              role="tab"
-              aria-selected={activeCat === c}
-              className={activeCat === c ? "cat on" : "cat"}
-              onClick={() => setActiveCat(c)}
-            >
-              {c}
-            </button>
-          ))}
+      <main className="customer">
+        <div className="menu-area" id="menu">
+          <div className="section-head">
+            <p className="eyebrow">Semua fresh, dimasak bila diorder</p>
+            <h2 className="screen-title">Menu</h2>
+          </div>
+
+          <div className="cats" role="tablist" aria-label="Kategori menu">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                role="tab"
+                aria-selected={activeCat === c}
+                className={activeCat === c ? "cat on" : "cat"}
+                onClick={() => setActiveCat(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          <ul className="menu-list">
+            {visible.map((m) => (
+              <li key={m.id} className="menu-item">
+                <div className="mi-tile">
+                  <span className="mi-title">{m.name}</span>
+                  <span className="mi-price-tag">{rm(m.price)}</span>
+                </div>
+                <div className="mi-info">
+                  <p className="mi-desc">{descOf(m)}</p>
+                </div>
+                <div className="mi-controls">
+                  {cart[m.id]?.qty ? (
+                    <div className="stepper">
+                      <button aria-label="Kurang" onClick={() => remove(m.id)}>
+                        −
+                      </button>
+                      <span>{cart[m.id].qty}</span>
+                      <button aria-label="Tambah" onClick={() => add(m)}>
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <button className="add-btn" onClick={() => add(m)}>
+                      Tambah
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <ul className="menu-list">
-          {visible.map((m) => (
-            <li key={m.id} className="menu-item">
-              <span className="mi-emoji" aria-hidden="true">{m.emoji}</span>
-              <div className="mi-info">
-                <div className="mi-name">{m.name}</div>
-                <div className="mi-desc">{m.description}</div>
-                <div className="mi-price">{rm(m.price)}</div>
+        <aside className="cart">
+          <h3>Pesanan anda</h3>
+          {lines.length === 0 ? (
+            <p className="cart-empty">
+              Cart kosong lagi. Tap "Tambah" untuk pilih makanan.
+            </p>
+          ) : (
+            <>
+              <ul className="cart-lines">
+                {lines.map((l) => (
+                  <li key={l.id}>
+                    <span className="cl-qty">{l.qty}×</span>
+                    <span className="cl-name">{l.name}</span>
+                    <span className="cl-price">
+                      {rm(parseFloat(l.price) * l.qty)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <label className="table-field">
+                No. meja <span className="muted">(kosongkan kalau bungkus)</span>
+                <input
+                  inputMode="numeric"
+                  placeholder="cth: 5"
+                  value={table}
+                  onChange={(e) => setTable(e.target.value)}
+                />
+              </label>
+
+              <div className="cart-total">
+                <span>Jumlah</span>
+                <strong>{rm(total)}</strong>
               </div>
-              <div className="mi-controls">
-                {cart[m.id]?.qty ? (
-                  <div className="stepper">
-                    <button aria-label="Kurang" onClick={() => remove(m.id)}>−</button>
-                    <span>{cart[m.id].qty}</span>
-                    <button aria-label="Tambah" onClick={() => add(m)}>+</button>
-                  </div>
-                ) : (
-                  <button className="add-btn" onClick={() => add(m)}>
-                    Tambah
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <aside className="cart">
-        <h3>Pesanan anda</h3>
-        {lines.length === 0 ? (
-          <p className="cart-empty">
-            Cart kosong lagi. Tap "Tambah" untuk pilih makanan.
-          </p>
-        ) : (
-          <>
-            <ul className="cart-lines">
-              {lines.map((l) => (
-                <li key={l.id}>
-                  <span className="cl-qty">{l.qty}×</span>
-                  <span className="cl-name">{l.name}</span>
-                  <span className="cl-price">{rm(parseFloat(l.price) * l.qty)}</span>
-                </li>
-              ))}
-            </ul>
-
-            <label className="table-field">
-              No. meja <span className="muted">(kosongkan kalau bungkus)</span>
-              <input
-                inputMode="numeric"
-                placeholder="cth: 5"
-                value={table}
-                onChange={(e) => setTable(e.target.value)}
-              />
-            </label>
-
-            <div className="cart-total">
-              <span>Jumlah</span>
-              <strong>{rm(total)}</strong>
-            </div>
-            <button className="checkout-btn" onClick={checkout}>
-              Hantar pesanan · {rm(total)}
-            </button>
-          </>
-        )}
-      </aside>
-    </main>
+              <button className="checkout-btn" onClick={checkout}>
+                Hantar pesanan · {rm(total)}
+              </button>
+            </>
+          )}
+        </aside>
+      </main>
+    </>
   );
 }
 

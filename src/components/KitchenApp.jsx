@@ -46,7 +46,6 @@ export default function KitchenApp() {
 
       {active.length === 0 ? (
         <div className="kitchen-empty">
-          <span className="ke-emoji">🍳</span>
           <p>Takde pesanan lagi.</p>
           <p className="muted">
             Order baru dari tab Customer akan muncul di sini secara automatik.
@@ -64,7 +63,7 @@ export default function KitchenApp() {
               </header>
               <div className="ticket-meta">
                 <span>
-                  {o.table === "Bungkus" ? "🛍️ Bungkus" : "🪑 Meja " + o.table}
+                  {o.table === "Bungkus" ? "Bungkus" : "Meja " + o.table}
                 </span>
                 <span className="muted">{sinceText(o.placedAt)}</span>
               </div>

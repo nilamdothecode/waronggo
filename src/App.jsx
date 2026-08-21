@@ -15,7 +15,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">🍜</span>
+          <span className="brand-mark">W</span>
           <span className="brand-name">WarungGo</span>
         </div>
         <div className="switcher" role="tablist" aria-label="Pilih paparan">
